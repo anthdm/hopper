@@ -10,3 +10,11 @@ The database for modern applications.
 
 # Why
 Teaching developers with real-world use cases how to built backend and low-level systems. 
+
+# Discord
+Join the Discord community with over 3000 like minded engineers.
+[Join Discord here](https://discord.com/invite/Ac7CWREe58)
+
+# Hopper LIVE streams
+[LIVE streams here](https://www.youtube.com/@anthonygg_)
+
