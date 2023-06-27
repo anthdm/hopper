@@ -17,9 +17,10 @@ const (
 type Map map[string]any
 
 type Filter struct {
-	EQ    map[string]any
-	Limit int
-	Sort  string
+	EQ     Map
+	Select []string
+	Limit  int
+	Sort   string
 }
 
 type Hopper struct {
@@ -30,7 +31,9 @@ type Hopper struct {
 type OptFunc func(opts *Options)
 
 type Options struct {
-	DBName string
+	DBName  string
+	Encoder DataEncoder
+	Decoder DataDecoder
 }
 
 func WithDBName(name string) OptFunc {
@@ -41,7 +44,9 @@ func WithDBName(name string) OptFunc {
 
 func New(options ...OptFunc) (*Hopper, error) {
 	opts := &Options{
-		DBName: defaultDBName,
+		Encoder: JSONEncoder{},
+		Decoder: JSONDecoder{},
+		DBName:  defaultDBName,
 	}
 	for _, fn := range options {
 		fn(opts)
@@ -101,6 +106,78 @@ func (h *Hopper) Insert(collName string, data Map) (uint64, error) {
 	return id, tx.Commit()
 }
 
+func (h *Hopper) Update(coll string, filter Filter, data Map) ([]Map, error) {
+	tx, err := h.db.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	bucket := tx.Bucket([]byte(coll))
+	if bucket == nil {
+		return nil, fmt.Errorf("collection (%s) not found", coll)
+	}
+	records, err := h.findFiltered(bucket, filter)
+	if err != nil {
+		return nil, err
+	}
+	for _, record := range records {
+		for k, v := range data {
+			if k == "id" {
+				continue
+			}
+			if _, ok := record[k]; ok {
+				record[k] = v
+			}
+		}
+		b, err := h.Encoder.Encode(record)
+		if err != nil {
+			return nil, err
+		}
+		id := record["id"].(uint64)
+		if err := bucket.Put(uint64Bytes(id), b); err != nil {
+			return nil, err
+		}
+	}
+	return records, tx.Commit()
+}
+
+func (h *Hopper) findFiltered(bucket *bbolt.Bucket, filter Filter) ([]Map, error) {
+	var records []Map
+	bucket.ForEach(func(k, v []byte) error {
+		record := Map{
+			"id": uint64FromBytes(k),
+		}
+		if err := h.Decoder.Decode(v, &record); err != nil {
+			return err
+		}
+		include := true
+		if filter.EQ != nil {
+			include = false
+			for fk, fv := range filter.EQ {
+				if value, ok := record[fk]; ok {
+					if fv == value {
+						include = true
+					}
+				}
+			}
+		}
+		if include {
+			if len(filter.Select) > 0 {
+				data := Map{}
+				for _, k := range filter.Select {
+					data[k] = record[k]
+				}
+				records = append(records, data)
+			} else {
+				records = append(records, record)
+			}
+		}
+		return nil
+	})
+	return records, nil
+}
+
 func (h *Hopper) Find(coll string, filter Filter) ([]Map, error) {
 	tx, err := h.db.Begin(true)
 	if err != nil {
@@ -114,17 +191,17 @@ func (h *Hopper) Find(coll string, filter Filter) ([]Map, error) {
 	}
 	results := []Map{}
 	bucket.ForEach(func(k, v []byte) error {
-		data := Map{
+		record := Map{
 			"id": uint64FromBytes(k),
 		}
-		if err := json.Unmarshal(v, &data); err != nil {
+		if err := json.Unmarshal(v, &record); err != nil {
 			return err
 		}
 		include := true
 		if filter.EQ != nil {
 			include = false
 			for fk, fv := range filter.EQ {
-				if value, ok := data[fk]; ok {
+				if value, ok := record[fk]; ok {
 					if fv == value {
 						include = true
 					}
@@ -132,7 +209,15 @@ func (h *Hopper) Find(coll string, filter Filter) ([]Map, error) {
 			}
 		}
 		if include {
-			results = append(results, data)
+			if len(filter.Select) > 0 {
+				data := Map{}
+				for _, k := range filter.Select {
+					data[k] = record[k]
+				}
+				results = append(results, data)
+			} else {
+				results = append(results, record)
+			}
 		}
 		return nil
 	})

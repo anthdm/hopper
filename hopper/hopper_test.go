@@ -4,6 +4,65 @@ import (
 	"testing"
 )
 
+func TestUpdate(t *testing.T) {
+	db, err := New(WithDBName("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.DropDatabase("test")
+	data := Map{"name": "foobarbaz"}
+	_, err = db.Insert("users", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	update := Map{"name": "Sailor"}
+	_, err = db.Update("users", Filter{}, update)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	results, err := db.Find("users", Filter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected to have 1 record got %d", len(results))
+	}
+	if results[0]["name"] != update["name"] {
+		t.Fatalf("expected to have updated name to %s but got %s", update["name"], results[0]["name"])
+	}
+}
+
+func TestSelect(t *testing.T) {
+	db, err := New(WithDBName("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.DropDatabase("test")
+
+	data := Map{"name": "foobarbaz"}
+	_, err = db.Insert("users", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filter := Filter{
+		Select: []string{"name"},
+	}
+	results, err := db.Find("users", filter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected to have 1 result got %d", len(results))
+	}
+	if _, ok := results[0]["id"]; ok {
+		t.Fatal("didnt selected id")
+	}
+	if results[0]["name"] != data["name"] {
+		t.Fatalf("expected name to be %s got %s", data["name"], results[0]["name"])
+	}
+}
+
 func TestInsert(t *testing.T) {
 	values := []Map{
 		{
