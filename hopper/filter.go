@@ -2,6 +2,8 @@ package hopper
 
 import (
 	"fmt"
+
+	"go.etcd.io/bbolt"
 )
 
 func eq(a, b any) bool {
@@ -62,15 +64,7 @@ func (f *Filter) Limit(n int) *Filter {
 	return f
 }
 
-func (f *Filter) Exec() ([]Map, error) {
-	tx, err := f.hopper.db.Begin(true)
-	if err != nil {
-		return nil, err
-	}
-	bucket := tx.Bucket([]byte(f.coll))
-	if bucket == nil {
-		return nil, fmt.Errorf("bucket (%s) not found", f.coll)
-	}
+func (f *Filter) findFiltered(bucket *bbolt.Bucket) ([]Map, error) {
 	results := []Map{}
 	bucket.ForEach(func(k, v []byte) error {
 		record := Map{
@@ -94,6 +88,18 @@ func (f *Filter) Exec() ([]Map, error) {
 		return nil
 	})
 	return results, nil
+}
+
+func (f *Filter) Exec() ([]Map, error) {
+	tx, err := f.hopper.db.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	bucket := tx.Bucket([]byte(f.coll))
+	if bucket == nil {
+		return nil, fmt.Errorf("bucket (%s) not found", f.coll)
+	}
+	return f.findFiltered(bucket)
 }
 
 func (f *Filter) applySelect(record Map) Map {

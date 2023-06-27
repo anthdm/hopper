@@ -35,7 +35,7 @@ func (s *Server) HandlePostInsert(c echo.Context) error {
 
 func (s *Server) HandleGetQuery(c echo.Context) error {
 	collname := c.Param("collname")
-	records, err := s.db.Find(collname, hopper.Filter{})
+	records, err := s.db.Find(collname).Exec()
 	if err != nil {
 		return err
 	}
