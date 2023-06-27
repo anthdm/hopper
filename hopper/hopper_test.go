@@ -5,6 +5,29 @@ import (
 	"testing"
 )
 
+func TestDelete(t *testing.T) {
+	db, err := New(WithDBName("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.DropDatabase("test")
+	id, err := db.Insert("users", Map{"name": "foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	delete := Map{"id": id}
+	if err := db.Delete("users").Eq(delete).Exec(); err != nil {
+		t.Fatal(err)
+	}
+	records, err := db.Find("users").Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 0 {
+		t.Fatalf("expected to have 0 records got %d", len(records))
+	}
+}
+
 func TestUpdate(t *testing.T) {
 	db, err := New(WithDBName("test"))
 	if err != nil {
@@ -87,7 +110,7 @@ func TestFind(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	results, err := db.Find("users").Exec()
+	results, err := db.Find("users").Eq(Map{}).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -86,9 +86,13 @@ func (h *Hopper) Insert(collName string, data Map) (uint64, error) {
 }
 
 func (h *Hopper) Update(collname string) *UpdateFilter {
-	return newUpdateFilter(h, collname)
+	return NewUpdateFilter(newFilter(h, collname))
 }
 
-func (h *Hopper) Find(collname string) *Filter {
-	return newFilter(h, collname)
+func (h *Hopper) Find(collname string) *FindFilter {
+	return NewFindFilter(newFilter(h, collname))
+}
+
+func (h *Hopper) Delete(collname string) *DeleteFilter {
+	return NewDeleteFilter(newFilter(h, collname))
 }

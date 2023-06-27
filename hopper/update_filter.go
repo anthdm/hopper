@@ -3,17 +3,19 @@ package hopper
 import "fmt"
 
 type UpdateFilter struct {
+	filter *Filter
 	kvs    Map
-	hopper *Hopper
-	coll   string
-	eq     filter
 }
 
-func newUpdateFilter(h *Hopper, coll string) *UpdateFilter {
+func NewUpdateFilter(f *Filter) *UpdateFilter {
 	return &UpdateFilter{
-		hopper: h,
-		coll:   coll,
+		filter: f,
 	}
+}
+
+func (f *UpdateFilter) Eq(kvs Map) *UpdateFilter {
+	f.filter.Eq(kvs)
+	return f
 }
 
 func (f *UpdateFilter) Values(kvs Map) *UpdateFilter {
@@ -21,26 +23,16 @@ func (f *UpdateFilter) Values(kvs Map) *UpdateFilter {
 	return f
 }
 
-func (f *UpdateFilter) Eq(kvs Map) *UpdateFilter {
-	f.eq = filter{
-		comp: eq,
-		kvs:  kvs,
-	}
-	return f
-}
-
 func (f *UpdateFilter) Exec() ([]Map, error) {
-	tx, err := f.hopper.db.Begin(true)
+	tx, err := f.filter.hopper.db.Begin(true)
 	if err != nil {
 		return nil, err
 	}
-	bucket := tx.Bucket([]byte(f.coll))
+	bucket := tx.Bucket([]byte(f.filter.coll))
 	if bucket == nil {
-		return nil, fmt.Errorf("bucket (%s) not found", f.coll)
+		return nil, fmt.Errorf("bucket (%s) not found", f.filter.coll)
 	}
-	filter := newFilter(f.hopper, f.coll)
-	filter.filters = append(filter.filters, f.eq)
-	records, err := filter.findFiltered(bucket)
+	records, err := NewFindFilter(f.filter).findFiltered(bucket)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +42,7 @@ func (f *UpdateFilter) Exec() ([]Map, error) {
 				record[k] = v
 			}
 		}
-		b, err := f.hopper.Encoder.Encode(record)
+		b, err := f.filter.hopper.Encoder.Encode(record)
 		if err != nil {
 			return nil, err
 		}
