@@ -28,20 +28,6 @@ type Hopper struct {
 	db *bbolt.DB
 }
 
-type OptFunc func(opts *Options)
-
-type Options struct {
-	DBName  string
-	Encoder DataEncoder
-	Decoder DataDecoder
-}
-
-func WithDBName(name string) OptFunc {
-	return func(opts *Options) {
-		opts.DBName = name
-	}
-}
-
 func New(options ...OptFunc) (*Hopper, error) {
 	opts := &Options{
 		Encoder: JSONEncoder{},
