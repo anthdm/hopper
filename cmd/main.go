@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -10,6 +11,10 @@ import (
 )
 
 func main() {
+	var a any
+	a = false
+	b := false
+	fmt.Println(a == b)
 	db, err := hopper.New()
 	if err != nil {
 		log.Fatal(err)
@@ -21,7 +26,7 @@ func main() {
 		c.JSON(http.StatusInternalServerError, hopper.Map{"error": err.Error()})
 	}
 	e.HideBanner = true
-	e.POST("/:collname", server.HandlePostInsert)
-	e.GET("/:collname", server.HandleGetQuery)
+	e.POST("/api/:collname", server.HandlePostInsert)
+	e.GET("/api/:collname", server.HandleGetQuery)
 	log.Fatal(e.Start(":7777"))
 }

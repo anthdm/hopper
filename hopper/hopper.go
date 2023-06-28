@@ -60,39 +60,6 @@ func (h *Hopper) CreateCollection(name string) (*bbolt.Bucket, error) {
 	return bucket, err
 }
 
-func (h *Hopper) Insert(collName string, data Map) (uint64, error) {
-	tx, err := h.db.Begin(true)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
-
-	collBucket, err := tx.CreateBucketIfNotExists([]byte(collName))
-	if err != nil {
-		return 0, err
-	}
-	id, err := collBucket.NextSequence()
-	if err != nil {
-		return 0, err
-	}
-	b, err := h.Encoder.Encode(data)
-	if err != nil {
-		return 0, err
-	}
-	if err := collBucket.Put(uint64Bytes(id), b); err != nil {
-		return 0, err
-	}
-	return id, tx.Commit()
-}
-
-func (h *Hopper) Update(collname string) *UpdateFilter {
-	return NewUpdateFilter(newFilter(h, collname))
-}
-
-func (h *Hopper) Find(collname string) *FindFilter {
-	return NewFindFilter(newFilter(h, collname))
-}
-
-func (h *Hopper) Delete(collname string) *DeleteFilter {
-	return NewDeleteFilter(newFilter(h, collname))
+func (h *Hopper) Coll(name string) *Filter {
+	return NewFilter(h, name)
 }

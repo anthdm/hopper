@@ -11,15 +11,15 @@ func TestDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.DropDatabase("test")
-	id, err := db.Insert("users", Map{"name": "foo"})
+	id, err := db.Coll("users").Insert(Map{"name": "foo"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	delete := Map{"id": id}
-	if err := db.Delete("users").Eq(delete).Exec(); err != nil {
+	if err := db.Coll("users").Eq(delete).Delete(); err != nil {
 		t.Fatal(err)
 	}
-	records, err := db.Find("users").Exec()
+	records, err := db.Coll("users").Find()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,19 +34,19 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.DropDatabase("test")
-	_, err = db.Insert("users", Map{"name": "foo"})
+	_, err = db.Coll("users").Insert(Map{"name": "foo"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	values := Map{"name": "bar"}
-	results, err := db.Update("users").Values(values).Exec()
+	results, err := db.Coll("users").Update(values)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(results) != 1 {
 		log.Fatalf("expected to have 1 result got %d", len(results))
 	}
-	records, err := db.Find("users").Exec()
+	records, err := db.Coll("users").Find()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestInsert(t *testing.T) {
 	}
 	defer db.DropDatabase("test")
 	for i, data := range values {
-		id, err := db.Insert("users", data)
+		id, err := db.Coll("users").Insert(data)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -88,7 +88,7 @@ func TestInsert(t *testing.T) {
 			t.Fatalf("expect ID %d got %d", i, id)
 		}
 	}
-	users, err := db.Find("users").Exec()
+	users, err := db.Coll("users").Find()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,12 +105,12 @@ func TestFind(t *testing.T) {
 	defer db.DropDatabase("test")
 
 	coll := "users"
-	_, err = db.Insert(coll, Map{"username": "James007"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db.Coll(coll).Insert(Map{"username": "James007"})
+	db.Coll(coll).Insert(Map{"username": "Acice"})
+	db.Coll(coll).Insert(Map{"username": "Bob"})
+	db.Coll(coll).Insert(Map{"username": "Mike"})
 
-	results, err := db.Find("users").Eq(Map{}).Exec()
+	results, err := db.Coll("users").Eq(Map{"username": "James007"}).Find()
 	if err != nil {
 		t.Fatal(err)
 	}
